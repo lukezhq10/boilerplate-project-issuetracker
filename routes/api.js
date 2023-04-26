@@ -18,12 +18,12 @@ module.exports = function (app) {
       let created_on = new Date();
       let updated_on = new Date();
       let created_by = req.body.created_by;
-      
+
       // if optional fields are blank, replace with ''
       let assigned_to = req.body.assigned_to === undefined ? '' : req.body.assigned_to;
       let status_text = req.body.status_text === undefined ? '' : req.body.status_text;
 
-      if (!issue_title || !issue_text || !created_by){
+      if (!issue_title || !issue_text || !created_by) {
         // if one of these required fields is null, use empty string to avoid validationerror
         issue_title = issue_title === null ? '' : issue_title;
         issue_text = issue_text === null ? '' : issue_text;
@@ -43,9 +43,10 @@ module.exports = function (app) {
         });
         newIssue.save()
           .catch((err) => {
-          console.log(err);
+          console.log("Error saving new Issue", err);
         });
 
+        // for testing: to remove once done
         console.log({
           _id: newIssue._id,
           issue_title: newIssue.issue_title,

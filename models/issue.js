@@ -3,13 +3,13 @@ const Schema = mongoose.Schema;
 
 // set up Issue schema
 const issueSchema = new Schema({
-    issue_title: {type: String, required: true },
-    issue_text: {type: String, required: true },
+    issue_title: { type: String, required: true },
+    issue_text: { type: String, required: true },
     created_on: Date,
     updated_on: Date,
-    created_by: {type: String, required: true },
+    created_by: { type: String, required: true },
     assigned_to: String,
-    open: { type: Boolean, default: true},
+    open: { type: Boolean, default: true },
     status_text: String
 });
 
