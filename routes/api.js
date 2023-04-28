@@ -1,5 +1,6 @@
 'use strict';
 const Issue = require('../models/issue.js');
+const Project = require('../models/issue.js');
 
 module.exports = function (app) {
 
@@ -7,11 +8,14 @@ module.exports = function (app) {
     
     .get(function (req, res){
       let project = req.params.project;
+      // get req returns array with all issues for the specific project
+      // Project Schema
+      // new Issues get saved in a project schema
       
     })
     
     // POST req submits form data and saves it as an Issue
-    .post((req, res) => {
+    .post(async (req, res) => {
       let project = req.params.project;
       let issue_title = req.body.issue_title;
       let issue_text = req.body.issue_text;
@@ -45,6 +49,26 @@ module.exports = function (app) {
           .catch((err) => {
           console.log("Error saving new Issue", err);
         });
+
+        // this code gives me a ValidationError. Issue with Project.findOne?
+        // check if project is new or not: if new project, make new Project with newIssue
+        //  if existing project, push newIssue to issues
+
+        // let existingProject = await Project.findOne({ project_Name: project });
+        // if (!existingProject) {
+        //   let newProject = new Project({
+        //     project_name: project,
+        //     issues: [newIssue]
+        //   });
+        //   newProject.save()
+        //     .catch((err) => {
+        //       console.log("Error saving new Project", err);
+        //     });
+        // } else {
+        //   console.log("Rest of code works")
+        // };
+
+        
 
         // for testing: to remove once done
         console.log({
