@@ -13,7 +13,17 @@ const issueSchema = new Schema({
     status_text: String
 });
 
+// set up Project schema
+const projectSchema = new Schema({
+    project_name: { type: String, required: true },
+    issues: [issueSchema]
+});
+
 
 const Issue = mongoose.model('Issue', issueSchema);
+const Project = mongoose.model('Project', projectSchema);
 
-module.exports = Issue;
+module.exports = { 
+    Issue,
+    Project
+}

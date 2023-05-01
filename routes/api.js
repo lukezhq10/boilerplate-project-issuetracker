@@ -1,6 +1,5 @@
 'use strict';
-const Issue = require('../models/issue.js');
-const Project = require('../models/issue.js');
+const { Issue, Project } = require('../models/issue.js');
 
 module.exports = function (app) {
 
@@ -16,7 +15,7 @@ module.exports = function (app) {
     
     // POST req submits form data and saves it as an Issue
     .post(async (req, res) => {
-      let project = req.params.project;
+      let project_name = req.params.project;
       let issue_title = req.body.issue_title;
       let issue_text = req.body.issue_text;
       let created_on = new Date();
@@ -45,56 +44,32 @@ module.exports = function (app) {
           assigned_to: assigned_to,
           status_text: status_text
         });
-        newIssue.save()
-          .catch((err) => {
-          console.log("Error saving new Issue", err);
-        });
-
-        // this code gives me a ValidationError. Issue with Project.findOne?
-        // check if project is new or not: if new project, make new Project with newIssue
-        //  if existing project, push newIssue to issues
-
-        // let existingProject = await Project.findOne({ project_Name: project });
-        // if (!existingProject) {
-        //   let newProject = new Project({
-        //     project_name: project,
-        //     issues: [newIssue]
-        //   });
-        //   newProject.save()
-        //     .catch((err) => {
-        //       console.log("Error saving new Project", err);
-        //     });
-        // } else {
-        //   console.log("Rest of code works")
-        // };
-
         
-
-        // for testing: to remove once done
-        console.log({
-          _id: newIssue._id,
-          issue_title: newIssue.issue_title,
-          issue_text: newIssue.issue_text,
-          created_on: newIssue.created_on,
-          updated_on: newIssue.updated_on,
-          created_by: newIssue.created_by,
-          assigned_to: newIssue.assigned_to,
-          open: newIssue.open,
-          status_text: newIssue.status_text
-        })
-
-        return res.json({
-          _id: newIssue._id,
-          issue_title: newIssue.issue_title,
-          issue_text: newIssue.issue_text,
-          created_on: newIssue.created_on,
-          updated_on: newIssue.updated_on,
-          created_by: newIssue.created_by,
-          assigned_to: newIssue.assigned_to,
-          open: newIssue.open,
-          status_text: newIssue.status_text
-        });
-
+        Project.findOne({ project_name: project_name })
+          .then(doc => {
+            if (!doc) {
+              let newProject = new Project({
+                project_name: project_name,
+                issues: [newIssue] // Initialize the issues array with newIssue
+              });
+              newProject.save()
+                .then(data => {
+                  return res.json(newIssue);
+                })
+                .catch(err => {
+                  console.log("Error saving new Project", err)
+                })
+            } else {
+              doc.issues.push(newIssue);
+              doc.save()
+                .then(data => {
+                  return res.json(newIssue);
+                })
+                .catch(err => {
+                  console.log("Error saving new Issue", err);
+                })
+            }
+          })
       }
 
     })
