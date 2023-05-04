@@ -4,12 +4,12 @@ const { Issue, Project } = require('../models/issue.js');
 module.exports = function (app) {
 
   app.route('/api/issues/:project')
-    
+
       // GET req returns array with all issues for the specific project
       // 1. search for the project
       // 2. return Project.issues
       // 3. filter by query (Ex. ?open=true&assigned_to=Joe)
-    .get(function (req, res){
+    .get(async (req, res) => {
       let project_name = req.params.project;
       let query = req.query;
 
