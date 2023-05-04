@@ -5,12 +5,29 @@ module.exports = function (app) {
 
   app.route('/api/issues/:project')
     
+      // GET req returns array with all issues for the specific project
+      // 1. search for the project
+      // 2. return Project.issues
+      // 3. filter by query (Ex. ?open=true&assigned_to=Joe)
     .get(function (req, res){
-      let project = req.params.project;
-      // get req returns array with all issues for the specific project
-      // Project Schema
-      // new Issues get saved in a project schema
-      
+      let project_name = req.params.project;
+      let query = req.query;
+
+      Project.findOne({ project_name: project_name })
+        .then(doc => {
+          let filteredIssues = doc.issues.filter(issue => {
+            for (let key in query) {
+              if (issue[key] === undefined || issue[key] != query[key])
+                return false;
+            }
+            return true;
+          });
+
+          return res.send(filteredIssues);
+        })
+        .catch(err => {
+          console.log("Error returning issues array", err)
+        })
     })
     
     // POST req submits form data and saves it as an Issue
