@@ -95,48 +95,83 @@ module.exports = function (app) {
     // if no _id: return error: no id json
     // if no update fields given: return error: no update fields json
     // if any other error: return error: could not update json
-    .put(function (req, res){
-      // test _id: 64550d209f515e5a680ff363
-    //   let project_name = req.params.project;
-    //   let _id = req.body._id;
-    //   let open = req.body.open === 'true'; // form req comes as String but should be saved as Bool
-    //   // checking off the box = closing the issue = false
-    //   // unchecked box means req.body.open is not updated
-    //   let updateFields = {
-    //     issue_title: req.body.issue_title,
-    //     issue_text: req.body.issue_text,
-    //     updated_on: new Date(),
-    //     created_by: req.body.created_by,
-    //     assigned_to: req.body.assigned_to,
-    //     status_text: req.body.status_text,
-    //     open: open
-    //   };
-    //   console.log(req.body);
-
-    //   // if fields are empty, don't change
-    //   let updateObj = {};
-
-    //   // loop over the fields in updateFields object and add non-empty fields to updateObj
-    //   for (let [key, value] of Object.entries(updateFields)) {
-    //     if (value) {
-    //       updateObj[key] = value;
-    //     }
-    //   }
-    //   // 1. search for the Issue by ID given within the Project
-    //   // 2. update based on fields given
-    //   Project.findOneAndUpdate(
-    //     { project_name: project_name, 'issues._id': _id },
-    //     { $set: { 'issues.$': updateObj } },
-    //     { new: true }
-    //   )
-    //     .then(doc => {
-    //       return res.json({ result: 'successfully updated', '_id': _id });
-    //     })
-    //     .catch(err => {
-    //       console.log("Error: Could not update", err);
-    //       return res.json({ error: 'could not update', '_id': _id });
-    //     })
+    .put(async (req, res) => {
+      let project_name = req.params.project;
+      let { _id, issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
+      let open = req.body.open === 'false' ? false : true; // form req comes as String but should be saved as Bool
+      // checking off the box = closing the issue = false
+      // unchecked box means req.body.open is not updated
       
+      let update = {
+        issue_title,
+        issue_text,
+        updated_on: new Date(),
+        created_by,
+        assigned_to,
+        status_text,
+        open
+      };
+
+
+      if (!_id) {
+        return res.json({ error: 'missing _id' })
+      }
+
+      Project.findOne({ project_name: project_name })
+        .then(doc => {
+          if (!doc) {
+            // project not found
+            console.log({ error: 'Project not found' })
+            return res.json({ error: 'could not update', '_id': _id }); // specific error msg test requires
+          }
+
+          // find index of issue with matching ID in issues array
+          let issueIndex = doc.issues.findIndex(issue => issue._id == _id);
+
+          if (issueIndex === -1) {
+            // issue not found
+            console.log({ error: 'Issue not found' })
+            return res.json({ error: 'could not update', '_id': _id }); // specific error msg test requires
+          }
+
+          if (!issue_title && !issue_text && !created_by && !assigned_to && !status_text && (open === doc.issues[issueIndex].open)) {
+            return res.json({ error: 'no update field(s) sent', '_id': _id })
+          }
+
+          // update issue based on update fields
+          // optional fields shouldn't overwrite existing info if empty
+          doc.issues[issueIndex].updated_on = update.updated_on;
+          doc.issues[issueIndex].open = update.open;
+          if (issue_title) {
+            doc.issues[issueIndex].issue_title = update.issue_title;
+          }
+          if (issue_text) {
+            doc.issues[issueIndex].issue_text = update.issue_text;
+          }
+          if (created_by) {
+            doc.issues[issueIndex].created_by = update.created_by;
+          }
+          if (assigned_to) {
+            doc.issues[issueIndex].assigned_to = update.assigned_to;
+          }
+          if (status_text) {
+            doc.issues[issueIndex].status_text = update.status_text;
+          }
+
+          doc.save()
+            .then(() => {
+              return res.json({ result: 'successfully updated', '_id': _id });
+            })
+            .catch(err => {
+              console.log("Error: Could not update", err);
+              return res.json({ error: 'could not update', '_id': _id });
+            })
+        })
+        .catch(err => {
+          console.log("Error: Could not update", err);
+          return res.json({ error: 'could not update', '_id': _id });
+        })
+      // test id: 645549e3e0ec4652cdb93f91
     })
     
     .delete(function (req, res){
