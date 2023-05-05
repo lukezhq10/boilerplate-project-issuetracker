@@ -4,11 +4,10 @@ const { Issue, Project } = require('../models/issue.js');
 module.exports = function (app) {
 
   app.route('/api/issues/:project')
-
-      // GET req returns array with all issues for the specific project
-      // 1. search for the project
-      // 2. return Project.issues
-      // 3. filter by query (Ex. ?open=true&assigned_to=Joe)
+    // GET req returns array with all issues for the specific project
+    // 1. search for the project
+    // 2. return Project.issues
+    // 3. filter by query (Ex. ?open=true&assigned_to=Joe)
     .get(async (req, res) => {
       let project_name = req.params.project;
       let query = req.query;
@@ -91,13 +90,57 @@ module.exports = function (app) {
 
     })
     
+    // PUT req updates existing issue in project given an _id and fields
+    // success: fields updated & updated_on date updated & return result json
+    // if no _id: return error: no id json
+    // if no update fields given: return error: no update fields json
+    // if any other error: return error: could not update json
     .put(function (req, res){
-      let project = req.params.project;
+      // test _id: 64550d209f515e5a680ff363
+    //   let project_name = req.params.project;
+    //   let _id = req.body._id;
+    //   let open = req.body.open === 'true'; // form req comes as String but should be saved as Bool
+    //   // checking off the box = closing the issue = false
+    //   // unchecked box means req.body.open is not updated
+    //   let updateFields = {
+    //     issue_title: req.body.issue_title,
+    //     issue_text: req.body.issue_text,
+    //     updated_on: new Date(),
+    //     created_by: req.body.created_by,
+    //     assigned_to: req.body.assigned_to,
+    //     status_text: req.body.status_text,
+    //     open: open
+    //   };
+    //   console.log(req.body);
+
+    //   // if fields are empty, don't change
+    //   let updateObj = {};
+
+    //   // loop over the fields in updateFields object and add non-empty fields to updateObj
+    //   for (let [key, value] of Object.entries(updateFields)) {
+    //     if (value) {
+    //       updateObj[key] = value;
+    //     }
+    //   }
+    //   // 1. search for the Issue by ID given within the Project
+    //   // 2. update based on fields given
+    //   Project.findOneAndUpdate(
+    //     { project_name: project_name, 'issues._id': _id },
+    //     { $set: { 'issues.$': updateObj } },
+    //     { new: true }
+    //   )
+    //     .then(doc => {
+    //       return res.json({ result: 'successfully updated', '_id': _id });
+    //     })
+    //     .catch(err => {
+    //       console.log("Error: Could not update", err);
+    //       return res.json({ error: 'could not update', '_id': _id });
+    //     })
       
     })
     
     .delete(function (req, res){
-      let project = req.params.project;
+      let project_name = req.params.project;
       
     });
     

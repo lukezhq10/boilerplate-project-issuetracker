@@ -12,8 +12,6 @@ const apiRoutes         = require('./routes/api.js');
 const fccTestingRoutes  = require('./routes/fcctesting.js');
 const runner            = require('./test-runner');
 
-const { Issue, Project } = require('./models/issue.js');
-
 let app = express();
 
 app.use('/public', express.static(process.cwd() + '/public'));
