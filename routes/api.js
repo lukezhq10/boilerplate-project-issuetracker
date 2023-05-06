@@ -1,5 +1,6 @@
 'use strict';
 const { Issue, Project } = require('../models/issue.js');
+const mongoose = require('mongoose');
 
 module.exports = function (app) {
 
@@ -60,6 +61,7 @@ module.exports = function (app) {
           assigned_to: assigned_to,
           status_text: status_text
         });
+        newIssue.save();
         
         Project.findOne({ project_name: project_name })
           .then(doc => {
@@ -90,53 +92,64 @@ module.exports = function (app) {
 
     })
     
+    // TODO: [Error: expected { error: 'could not update', …(1) } to deeply equal { …(2) }]
     // PUT req updates existing issue in project given an _id and fields
     // success: fields updated & updated_on date updated & return result json
     // if no _id: return error: no id json
     // if no update fields given: return error: no update fields json
     // if any other error: return error: could not update json
-    .put(function (req, res){
-      // test _id: 64550d209f515e5a680ff363
-    //   let project_name = req.params.project;
-    //   let _id = req.body._id;
-    //   let open = req.body.open === 'true'; // form req comes as String but should be saved as Bool
-    //   // checking off the box = closing the issue = false
-    //   // unchecked box means req.body.open is not updated
-    //   let updateFields = {
-    //     issue_title: req.body.issue_title,
-    //     issue_text: req.body.issue_text,
-    //     updated_on: new Date(),
-    //     created_by: req.body.created_by,
-    //     assigned_to: req.body.assigned_to,
-    //     status_text: req.body.status_text,
-    //     open: open
-    //   };
-    //   console.log(req.body);
-
-    //   // if fields are empty, don't change
-    //   let updateObj = {};
-
-    //   // loop over the fields in updateFields object and add non-empty fields to updateObj
-    //   for (let [key, value] of Object.entries(updateFields)) {
-    //     if (value) {
-    //       updateObj[key] = value;
-    //     }
-    //   }
-    //   // 1. search for the Issue by ID given within the Project
-    //   // 2. update based on fields given
-    //   Project.findOneAndUpdate(
-    //     { project_name: project_name, 'issues._id': _id },
-    //     { $set: { 'issues.$': updateObj } },
-    //     { new: true }
-    //   )
-    //     .then(doc => {
-    //       return res.json({ result: 'successfully updated', '_id': _id });
-    //     })
-    //     .catch(err => {
-    //       console.log("Error: Could not update", err);
-    //       return res.json({ error: 'could not update', '_id': _id });
-    //     })
+    .put(async (req, res) => {
+      let { _id, issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
+      let open = req.body.open === 'false' ? false : true; // form req comes as String but should be saved as Bool
+      // checking off the box = closing the issue = false
+      // unchecked box means req.body.open is not updated
       
+      let update = {
+        issue_title,
+        issue_text,
+        created_by,
+        assigned_to,
+        status_text,
+        open
+      };
+
+
+      if (!_id) {
+        return res.json({ error: 'missing _id' })
+      }
+
+      // BSONError occurs when we enter _id that isn't in ObjectId form
+      // if _id != ObjectId, return res.json{error}
+      if (!mongoose.Types.ObjectId.isValid(_id)) {
+        console.log({ error: 'invalid _id' });
+        return res.json({ error: 'could not update', '_id': _id });
+      }
+
+      Issue.findById(_id)
+        .then(doc => {
+          if (!doc) {
+            // issue not found
+            console.log({ error: 'Issue not found' });
+            return res.json({ error: 'could not update', '_id': _id });
+          } else {
+            if (!issue_title && !issue_text && !created_by && !assigned_to && !status_text && (open === doc.open)) {
+              return res.json({ error: 'no update field(s) sent', '_id': _id });
+          } else {
+            Issue.findByIdAndUpdate(_id, update)
+              .then(updatedIssue => {
+                updatedIssue.updated_on = new Date(); // updated_on not passing test
+                updatedIssue.save();
+                console.log({ result: 'successfully updated', '_id': _id });
+                return res.json({ result: 'successfully updated', '_id': _id });
+              })
+            }
+          }
+        })
+        .catch(err => {
+          console.log("Error: Could not update", err);
+          return res.json({ error: 'could not update', '_id': _id });
+        })
+      // test id: 6455ba33e136943801060188
     })
     
     .delete(function (req, res){
