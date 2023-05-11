@@ -2,32 +2,39 @@
 const e = require('cors');
 const { Issue } = require('../models/issue.js');
 const mongoose = require('mongoose');
+const { ObjectId } = require('mongodb');
 
 module.exports = function (app) {
-
-
-  // Project issue is not getting updated with updated_on and open, only the Issues
-  // GET req is not able to filter correctly for updated_on and open
   app.route('/api/issues/:project')
     // GET req returns array with all issues for the specific project
-    // 1. search for the project
-    // 2. return Project.issues
-    // 3. filter by query (Ex. ?open=true&assigned_to=Joe)
     .get(async (req, res) => {
       let project_name = req.params.project;
       let query = req.query;
       console.log(query);
-
       // not filtering open correctly
-      // probably because open is saved as a bool but req.query.open is a string? => resolved by using boolParser
+      // open is saved as a bool but req.query.open is a string => resolved by using boolParser
+
       Issue.find({ project_name: project_name })
         .then(doc => {
           // filter by query
           // check each query key with doc key
+
+          // need to check if Id given is valid ObjectId type
+          let filter = {};
+          for (let key in query) {
+            if (key === '_id'){
+              filter[key] = new mongoose.Types.ObjectId(req.query[key]);
+            } else {
+              filter[key] = query[key];
+            }
+          }
+
           let filteredIssues = doc.filter(issue => {
-            for (let key in query) {
-              if (issue[key] === undefined || issue[key] !== query[key])
-                return false;
+            for (let key in filter) {
+              if (key === '_id') {
+                return filter[key].toString() === issue[key].toString();
+              }
+              if (issue[key] !== filter[key]) return false;
             }
             return true;
           });
@@ -81,24 +88,17 @@ module.exports = function (app) {
       }
     })
     
-    // things that didn't work:
-    // 2. open is showing as updated but it's not going through
     .put(async (req, res) => {
       let project_name = req.params.project;
       let { _id, issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
       let open = req.body.open ? false : true;
-     // form req comes as String but should be saved as Bool
+      // form req comes as String but should be saved as Bool
       // checking off the box = closing the issue = false
       
       if (!_id || !mongoose.isValidObjectId(_id)) {
         console.log({ error: 'missing _id' });
         return res.json({ error: 'missing _id' });
       }
-
-      // if (mongoose.isObjectIdOrHexString(_id) === false) {
-      //   console.log({ error: 'invalid _id' });
-      //   return res.json({ error: 'could not update', '_id': _id })
-      // }
 
       // create the update object
       let update = {};
@@ -115,12 +115,12 @@ module.exports = function (app) {
       
       Issue.findByIdAndUpdate(_id, update, { new: true })
         .then(doc =>{
-          if (doc) {
-            console.log({ result: 'successfully updated', doc});
-            return res.json({ result: 'successfully updated', '_id': _id });
-          } else {
+          if (!doc) {
             console.log({ error: 'could not update', '_id': _id })
             return res.json({ error: 'could not update', '_id': _id });
+          } else {
+            console.log({ result: 'successfully updated', doc});
+            return res.json({ result: 'successfully updated', '_id': _id });
           }
         })
     })
