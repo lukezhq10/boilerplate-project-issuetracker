@@ -88,8 +88,8 @@ module.exports = function (app) {
       }
     })
     
+    // PUT request updates an issue based on optional fields given
     .put(async (req, res) => {
-      let project_name = req.params.project;
       let { _id, issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
       let open = req.body.open ? false : true;
       // form req comes as String but should be saved as Bool
@@ -125,9 +125,26 @@ module.exports = function (app) {
         })
     })
     
-    .delete(function (req, res){
-      let project_name = req.params.project;
-      
+    // DELETE request deletes an issue by _id given
+    .delete(async (req, res) => {
+      let _id = req.body._id;
+
+      if (!_id || !mongoose.isValidObjectId(_id)) {
+        return res.json({ error: 'missing _id' });
+      }
+
+      Issue.findOneAndDelete({ _id: _id })
+        .then(doc => {
+          if (!doc) {
+            console.log("Error deleting Issue");
+            return res.json({ error: 'could not delete', '_id': _id });
+          }
+          return res.json({ result: 'successfully deleted', '_id': _id });
+        })
+        .catch(err => {
+          console.log("Error deleting Issue", err);
+          return res.json({ error: 'could not delete', '_id': _id });
+        })
     });
     
 };
