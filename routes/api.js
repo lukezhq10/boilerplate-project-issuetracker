@@ -1,9 +1,13 @@
 'use strict';
-const { Issue, Project } = require('../models/issue.js');
+const e = require('cors');
+const { Issue } = require('../models/issue.js');
 const mongoose = require('mongoose');
 
 module.exports = function (app) {
 
+
+  // Project issue is not getting updated with updated_on and open, only the Issues
+  // GET req is not able to filter correctly for updated_on and open
   app.route('/api/issues/:project')
     // GET req returns array with all issues for the specific project
     // 1. search for the project
@@ -12,18 +16,22 @@ module.exports = function (app) {
     .get(async (req, res) => {
       let project_name = req.params.project;
       let query = req.query;
+      console.log(query);
 
-      Project.findOne({ project_name: project_name })
+      // not filtering open correctly
+      // probably because open is saved as a bool but req.query.open is a string? => resolved by using boolParser
+      Issue.find({ project_name: project_name })
         .then(doc => {
-          let filteredIssues = doc.issues.filter(issue => {
+          // filter by query
+          // check each query key with doc key
+          let filteredIssues = doc.filter(issue => {
             for (let key in query) {
-              if (issue[key] === undefined || issue[key] != query[key])
+              if (issue[key] === undefined || issue[key] !== query[key])
                 return false;
             }
             return true;
           });
-
-          return res.send(filteredIssues);
+          return res.json(filteredIssues)
         })
         .catch(err => {
           console.log("Error returning issues array", err)
@@ -53,6 +61,7 @@ module.exports = function (app) {
         })
       } else {
         let newIssue = new Issue({
+          project_name: project_name,
           issue_title: issue_title,
           issue_text: issue_text,
           created_on: created_on,
@@ -61,95 +70,59 @@ module.exports = function (app) {
           assigned_to: assigned_to,
           status_text: status_text
         });
-        newIssue.save();
-        
-        Project.findOne({ project_name: project_name })
-          .then(doc => {
-            if (!doc) {
-              let newProject = new Project({
-                project_name: project_name,
-                issues: [newIssue] // Initialize the issues array with newIssue
-              });
-              newProject.save()
-                .then(data => {
-                  return res.json(newIssue);
-                })
-                .catch(err => {
-                  console.log("Error saving new Project", err)
-                })
-            } else {
-              doc.issues.push(newIssue);
-              doc.save()
-                .then(data => {
-                  return res.json(newIssue);
-                })
-                .catch(err => {
-                  console.log("Error saving new Issue", err);
-                })
-            }
-          })
-      }
 
+        newIssue.save()
+          .then(data => {
+            return res.json(data);
+          })
+          .catch(err => {
+            console.log("Error saving new Issue", err)
+          });
+      }
     })
     
-    // TODO: [Error: expected { error: 'could not update', …(1) } to deeply equal { …(2) }]
-    // PUT req updates existing issue in project given an _id and fields
-    // success: fields updated & updated_on date updated & return result json
-    // if no _id: return error: no id json
-    // if no update fields given: return error: no update fields json
-    // if any other error: return error: could not update json
+    // things that didn't work:
+    // 2. open is showing as updated but it's not going through
     .put(async (req, res) => {
+      let project_name = req.params.project;
       let { _id, issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
-      let open = req.body.open === 'false' ? false : true; // form req comes as String but should be saved as Bool
+      let open = req.body.open ? false : true;
+     // form req comes as String but should be saved as Bool
       // checking off the box = closing the issue = false
-      // unchecked box means req.body.open is not updated
       
-      let update = {
-        issue_title,
-        issue_text,
-        created_by,
-        assigned_to,
-        status_text,
-        open
-      };
-
-
-      if (!_id) {
-        return res.json({ error: 'missing _id' })
+      if (!_id || !mongoose.isValidObjectId(_id)) {
+        console.log({ error: 'missing _id' });
+        return res.json({ error: 'missing _id' });
       }
 
-      // BSONError occurs when we enter _id that isn't in ObjectId form
-      // if _id != ObjectId, return res.json{error}
-      if (!mongoose.Types.ObjectId.isValid(_id)) {
-        console.log({ error: 'invalid _id' });
-        return res.json({ error: 'could not update', '_id': _id });
-      }
+      // if (mongoose.isObjectIdOrHexString(_id) === false) {
+      //   console.log({ error: 'invalid _id' });
+      //   return res.json({ error: 'could not update', '_id': _id })
+      // }
 
-      Issue.findById(_id)
-        .then(doc => {
-          if (!doc) {
-            // issue not found
-            console.log({ error: 'Issue not found' });
+      // create the update object
+      let update = {};
+      Object.keys(req.body).forEach(key => {
+        if (req.body[key] != '') {
+          update[key] = req.body[key]
+        }
+      })
+      if (Object.keys(update).length < 2) { // check if update fields were sent
+        return res.json({ error: 'no update field(s) sent', '_id': _id })
+      }
+      update['updated_on'] = new Date();
+
+      
+      Issue.findByIdAndUpdate(_id, update, { new: true })
+        .then(doc =>{
+          if (doc) {
+            console.log({ result: 'successfully updated', doc});
+            return res.json({ result: 'successfully updated', '_id': _id });
+          } else {
+            console.log({ error: 'could not update', '_id': _id })
             return res.json({ error: 'could not update', '_id': _id });
-          } else {
-            if (!issue_title && !issue_text && !created_by && !assigned_to && !status_text && (open === doc.open)) {
-              return res.json({ error: 'no update field(s) sent', '_id': _id });
-          } else {
-            Issue.findByIdAndUpdate(_id, update)
-              .then(updatedIssue => {
-                updatedIssue.updated_on = new Date(); // updated_on not passing test
-                updatedIssue.save();
-                console.log({ result: 'successfully updated', '_id': _id });
-                return res.json({ result: 'successfully updated', '_id': _id });
-              })
-            }
           }
         })
-        .catch(err => {
-          console.log("Error: Could not update", err);
-          return res.json({ error: 'could not update', '_id': _id });
-        })
-      // test id: 6455ba33e136943801060188
     })
     
     .delete(function (req, res){
